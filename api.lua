@@ -1,5 +1,5 @@
 
--- Mobs Api (16th April 2016)
+-- Mobs Api (1st May 2016)
 
 mobs = {}
 mobs.mod = "redo"
@@ -71,76 +71,11 @@ get_velocity = function(self)
 	return (v.x * v.x + v.z * v.z) ^ 0.5
 end
 
-set_animation = function(self, type)
-
-	if not self.animation then
-		return
-	end
-
-	self.animation.current = self.animation.current or ""
-
-	self.animation.speed_normal = self.animation.speed_normal or 15
-
-	if type == "stand"
-	and self.animation.current ~= "stand" then
-
-		if self.animation.stand_start
-		and self.animation.stand_end
-		and self.animation.speed_normal then
-
-			self.object:set_animation({
-				x = self.animation.stand_start,
-				y = self.animation.stand_end},
-				self.animation.speed_normal, 0)
-
-			self.animation.current = "stand"
-		end
-
-	elseif type == "walk"
-	and self.animation.current ~= "walk" then
-
-		if self.animation.walk_start
-		and self.animation.walk_end
-		and self.animation.speed_normal then
-
-			self.object:set_animation({
-				x = self.animation.walk_start,
-				y = self.animation.walk_end},
-				self.animation.speed_normal, 0)
-
-			self.animation.current = "walk"
-		end
-
-	elseif type == "run"
-	and self.animation.current ~= "run" then
-
-		if self.animation.run_start
-		and self.animation.run_end
-		and self.animation.speed_run then
-
-			self.object:set_animation({
-				x = self.animation.run_start,
-				y = self.animation.run_end},
-				(self.animation.speed_run or self.animation.speed_normal), 0)
-
-			self.animation.current = "run"
-		end
-
-	elseif type == "punch"
-	and self.animation.current ~= "punch" then
-
-		if self.animation.punch_start
-		and self.animation.punch_end
-		and self.animation.speed_normal then
-
-			self.object:set_animation({
-				x = self.animation.punch_start,
-				y = self.animation.punch_end},
-				(self.animation.speed_punch or self.animation.speed_normal), 0)
-
-			self.animation.current = "punch"
-		end
-	end
+set_animation = function(self, anim_def)
+  if self.animation[anim_def] then
+    self.object:set_animation({x = self.animation[anim_def].start, y = self.animation[anim_def].stop}, self.animation[anim_def].speed, 0, self.animation[anim_def].loop)
+    self.animation.current = anim_def
+  end
 end
 
 -- check line of sight for walkers and swimmers alike
@@ -288,7 +223,16 @@ function check_for_death(self)
 		self.on_die(self, pos)
 	end
 
-	self.object:remove()
+        local dur = self.animation["death"].duration or 0.5
+
+        -- play death animation
+        if self.animation["death"] then
+            set_animation(self, "death")
+        end
+
+        minetest.after(dur, function()
+            self.object:remove()
+        end)
 
 	return true
 end
@@ -1529,33 +1473,44 @@ local do_states = function(self, dtime)
 				set_velocity(self, 0)
 				set_animation(self, "punch")
 
-				if self.timer > 1 then
+				if not self.custom_attack then
 
-					self.timer = 0
+					if self.timer > 1 then
 
-					local p2 = p
-					local s2 = s
+						self.timer = 0
 
-					p2.y = p2.y + 1.5
-					s2.y = s2.y + 1.5
+						local p2 = p
+						local s2 = s
 
-					--if minetest.line_of_sight(p2, s2) == true then
-					if line_of_sight_water(self, p2, s2) == true then
+						p2.y = p2.y + 1.5
+						s2.y = s2.y + 1.5
 
-						-- play attack sound
-						if self.sounds.attack then
+						--if minetest.line_of_sight(p2, s2) == true then
+						if line_of_sight_water(self, p2, s2) == true then
 
-							minetest.sound_play(self.sounds.attack, {
-								object = self.object,
-								max_hear_distance = self.sounds.distance
-							})
+							-- play attack sound
+							if self.sounds.attack then
+
+								minetest.sound_play(self.sounds.attack, {
+									object = self.object,
+									max_hear_distance = self.sounds.distance
+								})
+							end
+
+							-- punch player
+							self.attack:punch(self.object, 1.0, {
+								full_punch_interval = 1.0,
+								damage_groups = {fleshy = self.damage}
+							}, nil)
 						end
+					end
+				else	-- call custom attack every second
+					if self.custom_attack
+					and self.timer > 1 then
 
-						-- punch player
-						self.attack:punch(self.object, 1.0, {
-							full_punch_interval = 1.0,
-							damage_groups = {fleshy = self.damage}
-						}, nil)
+						self.timer = 0
+
+						self.custom_attack(self, p)
 					end
 				end
 			end
@@ -1977,14 +1932,15 @@ local mob_step = function(self, dtime)
 	-- when lifetimer expires remove mob (except npc and tamed)
 	if self.type ~= "npc"
 	and not self.tamed
-	and self.state ~= "attack" then
+	and self.state ~= "attack"
+	and remove_far ~= true then
 
 		self.lifetimer = self.lifetimer - dtime
 
 		if self.lifetimer <= 0 then
 
 			-- only despawn away from player
-			local objs = minetest.get_objects_inside_radius(pos, 10)
+			local objs = minetest.get_objects_inside_radius(pos, 15)
 
 			for _,oir in pairs(objs) do
 
@@ -2164,6 +2120,8 @@ minetest.register_entity(name, {
 	pathfinding = def.pathfinding,
 	immune_to = def.immune_to or {},
 	explosion_radius = def.explosion_radius,
+	custom_attack = def.custom_attack,
+	on_blast = def.on_blast,
 
 	on_step = mob_step,
 
