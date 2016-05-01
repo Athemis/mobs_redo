@@ -31,7 +31,7 @@ This functions registers a new mob as a Minetest entity.
         'visual' same is in minetest.register_entity()
         'visual_size' same is in minetest.register_entity()
         'textures' same is in minetest.register_entity()
-            although you can add multiple lines for random textures {{"texture1.png"},{"texture2.png"}}, 
+            although you can add multiple lines for random textures {{"texture1.png"},{"texture2.png"}},
         'gotten_texture' alt. texture for when self.gotten value is set to true (used for shearing sheep)
         'child_texture' texture of mod for when self.child is set to true
         'mesh' same is in minetest.register_entity()
@@ -96,18 +96,19 @@ This functions registers a new mob as a Minetest entity.
             'jump' sound when jumping
             'explode' sound when exploding
             'distance' maximum distance sounds are heard from (default is 10)
-        'animation' a table with the animation ranges and speed of the model
-            'stand_start'
-            'stand_end'
-            'walk_start'
-            'walk_end'
-            'run_start'
-            'run_end'
-            'punch_start'
-            'punch_end'
-            'speed_normal'
-            'speed_run' used when mob runs behind player to make animation faster
-            'speed_punch' used when mob punches player to make animation faster
+        'animation' list of animation definition tables with the animation ranges and speed of the model. Each table consists of the variables
+            'start'
+            'end'
+            'speed'
+            'loop' (optional) defines if the animation is played in a loop (default is true)
+
+            supported animations are:
+            'stand'
+            'walk'
+            'run'
+            'punch'
+            'death'
+
         'replace_what' group if items to replace e.g. {"farming:wheat_8", "farming:carrot_8"}
         'replace_with' replace with what e.g. "air" or in chickens case "mobs:egg"
         'replace_rate' how random should the replace rate be (typically 10)

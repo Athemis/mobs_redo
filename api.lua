@@ -73,7 +73,11 @@ end
 
 set_animation = function(self, anim_def)
   if self.animation[anim_def] then
-    self.object:set_animation({x = self.animation[anim_def].start, y = self.animation[anim_def].stop}, self.animation[anim_def].speed, 0, self.animation[anim_def].loop)
+  	local loop = true
+  	if self.animation[anim_def].loop then
+  		loop = self.animation[anim_def].loop
+  	end
+    self.object:set_animation({x = self.animation[anim_def].start, y = self.animation[anim_def].stop}, self.animation[anim_def].speed, 0, loop)
     self.animation.current = anim_def
   end
 end
